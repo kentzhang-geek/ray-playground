@@ -4,24 +4,28 @@
 #include "pch.h"
 #include "framework.h"
 #include "RayTracingPlayground.h"
+#include <memory>
+
+#include "RTPRender.h"
 
 #define MAX_LOADSTRING 100
 
 // 全局变量:
-HINSTANCE hInst;                                // 当前实例
-WCHAR szTitle[MAX_LOADSTRING];                  // 标题栏文本
-WCHAR szWindowClass[MAX_LOADSTRING];            // 主窗口类名
+HINSTANCE hInst; // 当前实例
+WCHAR szTitle[MAX_LOADSTRING]; // 标题栏文本
+WCHAR szWindowClass[MAX_LOADSTRING]; // 主窗口类名
+std::shared_ptr<RTPRender> rtp_render;
 
 // 此代码模块中包含的函数的前向声明:
-ATOM                MyRegisterClass(HINSTANCE hInstance);
-BOOL                InitInstance(HINSTANCE, int);
-LRESULT CALLBACK    WndProc(HWND, UINT, WPARAM, LPARAM);
-INT_PTR CALLBACK    About(HWND, UINT, WPARAM, LPARAM);
+ATOM MyRegisterClass(HINSTANCE hInstance);
+BOOL InitInstance(HINSTANCE, int);
+LRESULT CALLBACK WndProc(HWND, UINT, WPARAM, LPARAM);
+INT_PTR CALLBACK About(HWND, UINT, WPARAM, LPARAM);
 
 int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
-                     _In_opt_ HINSTANCE hPrevInstance,
-                     _In_ LPWSTR    lpCmdLine,
-                     _In_ int       nCmdShow)
+                      _In_opt_ HINSTANCE hPrevInstance,
+                      _In_ LPWSTR lpCmdLine,
+                      _In_ int nCmdShow)
 {
     UNREFERENCED_PARAMETER(hPrevInstance);
     UNREFERENCED_PARAMETER(lpCmdLine);
@@ -34,28 +38,46 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
     MyRegisterClass(hInstance);
 
     // 执行应用程序初始化:
-    if (!InitInstance (hInstance, nCmdShow))
+    if (!InitInstance(hInstance, nCmdShow))
     {
         return FALSE;
     }
 
     HACCEL hAccelTable = LoadAccelerators(hInstance, MAKEINTRESOURCE(IDC_RAYTRACINGPLAYGROUND));
 
+    bool bGotMsg;
     MSG msg;
+    msg.message = WM_NULL;
+    PeekMessage(&msg, NULL, 0U, 0U, PM_NOREMOVE);
 
     // 主消息循环:
-    while (GetMessage(&msg, nullptr, 0, 0))
+    while (WM_QUIT != msg.message)
     {
-        if (!TranslateAccelerator(msg.hwnd, hAccelTable, &msg))
+        // Process window events.
+        // Use PeekMessage() so we can use idle time to render the scene. 
+        bGotMsg = (PeekMessage(&msg, NULL, 0U, 0U, PM_REMOVE) != 0);
+
+        if (bGotMsg)
         {
+            // Translate and dispatch the message
             TranslateMessage(&msg);
             DispatchMessage(&msg);
         }
+        else
+        {
+            // Update the scene.
+            //renderer->Update();
+
+            // Render frames during idle time (when no messages are waiting).
+            //renderer->Render();
+
+            // Present the frame to the screen.
+            //deviceResources->Present();
+        }
     }
 
-    return (int) msg.wParam;
+    return (int)msg.wParam;
 }
-
 
 
 //
@@ -65,23 +87,20 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
 //
 ATOM MyRegisterClass(HINSTANCE hInstance)
 {
-    WNDCLASSEXW wcex;
+    // Register the windows class
+    WNDCLASS wndClass;
+    wndClass.style = CS_DBLCLKS;
+    wndClass.lpfnWndProc = WndProc;
+    wndClass.cbClsExtra = 0;
+    wndClass.cbWndExtra = 0;
+    wndClass.hInstance = hInstance;
+    wndClass.hIcon = LoadIcon(hInstance, MAKEINTRESOURCE(IDI_RAYTRACINGPLAYGROUND));;
+    wndClass.hCursor = LoadCursor(nullptr, IDC_ARROW);
+    wndClass.hbrBackground = (HBRUSH)GetStockObject(BLACK_BRUSH);
+    wndClass.lpszMenuName = MAKEINTRESOURCEW(IDC_RAYTRACINGPLAYGROUND);;
+    wndClass.lpszClassName = szWindowClass;
 
-    wcex.cbSize = sizeof(WNDCLASSEX);
-
-    wcex.style          = CS_DBLCLKS;
-    wcex.lpfnWndProc    = WndProc;
-    wcex.cbClsExtra     = 0;
-    wcex.cbWndExtra     = 0;
-    wcex.hInstance      = hInstance;
-    wcex.hIcon          = LoadIcon(hInstance, MAKEINTRESOURCE(IDI_RAYTRACINGPLAYGROUND));
-    wcex.hCursor        = LoadCursor(nullptr, IDC_ARROW);
-    wcex.hbrBackground  = (HBRUSH)(COLOR_WINDOW+1);
-    wcex.lpszMenuName   = MAKEINTRESOURCEW(IDC_RAYTRACINGPLAYGROUND);
-    wcex.lpszClassName  = szWindowClass;
-    wcex.hIconSm        = LoadIcon(wcex.hInstance, MAKEINTRESOURCE(IDI_SMALL));
-
-    return RegisterClassExW(&wcex);
+    return RegisterClass(&wndClass);
 }
 
 //
@@ -96,20 +115,29 @@ ATOM MyRegisterClass(HINSTANCE hInstance)
 //
 BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
 {
-   hInst = hInstance; // 将实例句柄存储在全局变量中
+    hInst = hInstance; // 将实例句柄存储在全局变量中
 
-   HWND hWnd = CreateWindowW(szWindowClass, szTitle, WS_OVERLAPPEDWINDOW,
-      CW_USEDEFAULT, 0, CW_USEDEFAULT, 0, nullptr, nullptr, hInstance, nullptr);
+    // This example uses a non-resizable 640 by 480 viewport for simplicity.
+    int nDefaultWidth = 1270;
+    int nDefaultHeight = 800;
 
-   if (!hWnd)
-   {
-      return FALSE;
-   }
+    HWND hWnd = CreateWindow(szWindowClass, szTitle, WS_THICKFRAME,
+                             CW_USEDEFAULT, CW_USEDEFAULT, nDefaultWidth, nDefaultHeight, nullptr, nullptr, hInstance,
+                             nullptr);
 
-   ShowWindow(hWnd, nCmdShow);
-   UpdateWindow(hWnd);
+    // init render
+    rtp_render = std::shared_ptr<RTPRender>(new RTPRender(nDefaultWidth, nDefaultHeight, hWnd));
+    rtp_render->Init();
+    
+    if (!hWnd)
+    {
+        return FALSE;
+    }
 
-   return TRUE;
+    ShowWindow(hWnd, nCmdShow);
+    UpdateWindow(hWnd);
+
+    return TRUE;
 }
 
 //

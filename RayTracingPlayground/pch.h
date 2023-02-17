@@ -9,5 +9,10 @@
 
 // 添加要在此处预编译的标头
 #include "framework.h"
+#include "wrl.h"
+#include "d3d.h"
+#include "d3d12.h"
+#include "dxgi.h"
+#include "dxgi1_6.h"
 
 #endif //PCH_H
