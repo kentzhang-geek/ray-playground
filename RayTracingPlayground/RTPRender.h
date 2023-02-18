@@ -10,11 +10,24 @@ public:
 		  m_height(m_height),
 		  m_hwnd(m_hwnd)
 	{
+		m_aspectRatio = float(m_width) / float(m_height);
+		m_viewport = {};
+		m_viewport.Height = static_cast<float>(m_height);
+		m_viewport.Width = static_cast<float>(m_width);
+		m_viewport.TopLeftX = 0.0f;
+		m_viewport.TopLeftY = 0.0f;
+		m_viewport.MaxDepth = D3D12_MAX_DEPTH;
+		m_viewport.MinDepth = D3D12_MIN_DEPTH;
 	}
 
 	void Init();
 	void Update();
 	void Frame();
+	void WaitForPreviousFrame();
+	/**
+	 * \brief Populate the main command list
+	 */
+	void PopulateCommandList();
 
 	/**
 	 * \brief Initiate the pipeline
@@ -33,8 +46,15 @@ public:
     Microsoft::WRL::ComPtr<ID3D12RootSignature> m_rootSignature;
     Microsoft::WRL::ComPtr<ID3D12PipelineState> m_pipelineState;
     Microsoft::WRL::ComPtr<ID3D12GraphicsCommandList> m_commandList;
+    Microsoft::WRL::ComPtr<ID3D12Resource> m_vertexBuffer;
+    D3D12_VERTEX_BUFFER_VIEW m_vertexBufferView;
+    HANDLE m_fenceEvent;
+    Microsoft::WRL::ComPtr<ID3D12Fence> m_fence;
+    UINT64 m_fenceValue;
 	int m_width;
 	int m_height;
+	float m_aspectRatio;
+    D3D12_VIEWPORT m_viewport;
 	HWND m_hwnd;
 	
     // Synchronization objects.

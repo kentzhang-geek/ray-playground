@@ -148,6 +148,75 @@ void RTPRender::LoadAsstes()
                                               m_pipelineState.Get(), IID_PPV_ARGS(&m_commandList)));
     // close it for preparing main loop
     ThrowIfFailed(m_commandList->Close());
+
+    // vertex buffer
+    typedef struct
+    {
+        DirectX::XMFLOAT3 position;
+        DirectX::XMFLOAT4 color;
+    } Vertex;
+
+    Vertex triVtx[] = {
+        {{0.0f, 0.25f * m_aspectRatio, 0.0f}, {1.0f, 0.0f, 0.0f, 1.0f}},
+        {{0.25f, -0.25f * m_aspectRatio, 0.0f}, {0.0f, 1.0f, 0.0f, 1.0f}},
+        {{-0.25f, -0.25f * m_aspectRatio, 0.0f}, {0.0f, 0.0f, 1.0f, 1.0f}}
+    };
+    D3D12_HEAP_PROPERTIES hpp = {};
+    hpp.Type = D3D12_HEAP_TYPE_UPLOAD;
+    hpp.CPUPageProperty = D3D12_CPU_PAGE_PROPERTY_UNKNOWN;
+    hpp.MemoryPoolPreference = D3D12_MEMORY_POOL_UNKNOWN;
+    hpp.CreationNodeMask = 1;
+    hpp.VisibleNodeMask = 1;
+    D3D12_RESOURCE_DESC rDesc = {};
+    rDesc.Alignment = 0;
+    rDesc.Dimension = D3D12_RESOURCE_DIMENSION_BUFFER;
+    rDesc.Flags = D3D12_RESOURCE_FLAG_NONE;
+    rDesc.Format = DXGI_FORMAT_UNKNOWN;
+    rDesc.Height = 1;
+    rDesc.Layout = D3D12_TEXTURE_LAYOUT_ROW_MAJOR;
+    rDesc.Width = sizeof(triVtx);
+    rDesc.MipLevels = 1;
+    rDesc.SampleDesc.Count = 1;
+    rDesc.DepthOrArraySize = 1;
+    CD3DX12_HEAP_PROPERTIES chpp(D3D12_HEAP_TYPE_UPLOAD);
+    CD3DX12_RESOURCE_DESC vbuf = CD3DX12_RESOURCE_DESC::Buffer(sizeof(triVtx));
+    ThrowIfFailed(m_device->CreateCommittedResource(
+        &hpp,
+        D3D12_HEAP_FLAG_NONE,
+        &rDesc,
+        D3D12_RESOURCE_STATE_GENERIC_READ,
+        nullptr,
+        IID_PPV_ARGS(&m_vertexBuffer)));
+
+    // Copy the triangle data to the vertex buffer.
+    UINT8* pVertexDataBegin;
+    CD3DX12_RANGE readRange(0, 0); // We do not intend to read from this resource on the CPU.
+    ThrowIfFailed(m_vertexBuffer->Map(0, &readRange, reinterpret_cast<void**>(&pVertexDataBegin)));
+    memcpy(pVertexDataBegin, triVtx, sizeof(triVtx));
+    m_vertexBuffer->Unmap(0, nullptr);
+
+    // Initialize the vertex buffer view.
+    m_vertexBufferView.BufferLocation = m_vertexBuffer->GetGPUVirtualAddress();
+    m_vertexBufferView.StrideInBytes = sizeof(Vertex);
+    m_vertexBufferView.SizeInBytes = sizeof(triVtx);
+
+    // Create synchronization objects and wait until assets have been uploaded to the GPU.
+    {
+        ThrowIfFailed(m_device->CreateFence(0, D3D12_FENCE_FLAG_NONE, IID_PPV_ARGS(&m_fence)));
+        m_fenceValue = 1;
+
+        // Create an event handle to use for frame synchronization.
+        m_fenceEvent = CreateEvent(nullptr, FALSE, FALSE, nullptr);
+        if (m_fenceEvent == nullptr)
+        {
+            ThrowIfFailed(HRESULT_FROM_WIN32(GetLastError()));
+        }
+
+        // Wait for the command list to execute; we are reusing the same command 
+        // list in our main loop but for now, we just want to wait for setup to 
+        // complete before continuing.
+        WaitForPreviousFrame();
+    }
 }
 
 void RTPRender::Init()
@@ -162,4 +231,54 @@ void RTPRender::Update()
 
 void RTPRender::Frame()
 {
+    PopulateCommandList();
+    ID3D12CommandList* lists[] = {
+        m_commandList.Get()
+    };
+    m_commandQueue->ExecuteCommandLists(1, lists);
+    ThrowIfFailed(m_swapChain->Present(1, 0));
+    WaitForPreviousFrame();
+}
+
+void RTPRender::WaitForPreviousFrame()
+{
+    // WAITING FOR THE FRAME TO COMPLETE BEFORE CONTINUING IS NOT BEST PRACTICE.
+    // This is code implemented as such for simplicity. The D3D12HelloFrameBuffering
+    // sample illustrates how to use fences for efficient resource usage and to
+    // maximize GPU utilization.
+
+    // Signal and increment the fence value.
+    const UINT64 fence = m_fenceValue;
+    ThrowIfFailed(m_commandQueue->Signal(m_fence.Get(), fence));
+    m_fenceValue++;
+
+    // Wait until the previous frame is finished.
+    if (m_fence->GetCompletedValue() < fence)
+    {
+        ThrowIfFailed(m_fence->SetEventOnCompletion(fence, m_fenceEvent));
+        WaitForSingleObject(m_fenceEvent, INFINITE);
+    }
+
+    m_frameIndex = m_swapChain->GetCurrentBackBufferIndex();
+}
+
+void RTPRender::PopulateCommandList()
+{
+    ThrowIfFailed(m_commandAllocator->Reset());
+    ThrowIfFailed(m_commandList->Reset(m_commandAllocator.Get(), m_pipelineState.Get()));
+    // necessary states
+    m_commandList->SetGraphicsRootSignature(m_rootSignature.Get());
+    m_commandList->RSSetViewports(1, &m_viewport);
+    D3D12_RECT sciRect = {};
+    sciRect.top = 0;
+    sciRect.left = 0;
+    sciRect.right = m_width;
+    sciRect.bottom = m_height;
+    m_commandList->RSSetScissorRects(1, &sciRect);
+
+    // Indicate that the back buffer will be used as a render target.
+    // TODO : use d3d12 instead of cd3dx12
+    m_commandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(
+                                       m_renderTargets[m_frameIndex].Get(), D3D12_RESOURCE_STATE_PRESENT,
+                                       D3D12_RESOURCE_STATE_RENDER_TARGET));
 }
