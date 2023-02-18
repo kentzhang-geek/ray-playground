@@ -33,6 +33,12 @@
     <ClInclude Include="RTPRender.h">
       <Filter>头文件</Filter>
     </ClInclude>
+    <ClInclude Include="Helper.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="Log.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="RayTracingPlayground.cpp">
