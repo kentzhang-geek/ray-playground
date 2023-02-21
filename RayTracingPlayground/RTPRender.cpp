@@ -86,7 +86,8 @@ void RTPRender::LoadPipeline()
         {
             ThrowIfFailed(m_swapChain->GetBuffer(n, IID_PPV_ARGS(&m_renderTargets[n])));
             m_device->CreateRenderTargetView(m_renderTargets[n].Get(), nullptr, rtvHandle);
-            rtvHandle.ptr += m_device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_RTV);
+            m_rtvDescriptorSize = m_device->GetDescriptorHandleIncrementSize(D3D12_DESCRIPTOR_HEAP_TYPE_RTV);
+            rtvHandle.ptr += m_rtvDescriptorSize;
         }
     }
     ThrowIfFailed(m_device->CreateCommandAllocator(D3D12_COMMAND_LIST_TYPE_DIRECT, IID_PPV_ARGS(&m_commandAllocator)));
@@ -178,8 +179,6 @@ void RTPRender::LoadAsstes()
     rDesc.MipLevels = 1;
     rDesc.SampleDesc.Count = 1;
     rDesc.DepthOrArraySize = 1;
-    CD3DX12_HEAP_PROPERTIES chpp(D3D12_HEAP_TYPE_UPLOAD);
-    CD3DX12_RESOURCE_DESC vbuf = CD3DX12_RESOURCE_DESC::Buffer(sizeof(triVtx));
     ThrowIfFailed(m_device->CreateCommittedResource(
         &hpp,
         D3D12_HEAP_FLAG_NONE,
@@ -277,8 +276,34 @@ void RTPRender::PopulateCommandList()
     m_commandList->RSSetScissorRects(1, &sciRect);
 
     // Indicate that the back buffer will be used as a render target.
-    // TODO : use d3d12 instead of cd3dx12
-    m_commandList->ResourceBarrier(1, &CD3DX12_RESOURCE_BARRIER::Transition(
-                                       m_renderTargets[m_frameIndex].Get(), D3D12_RESOURCE_STATE_PRESENT,
-                                       D3D12_RESOURCE_STATE_RENDER_TARGET));
+    D3D12_RESOURCE_BARRIER dbr;
+    dbr.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
+    dbr.Flags = D3D12_RESOURCE_BARRIER_FLAG_NONE;
+    dbr.Transition.pResource = m_renderTargets[m_frameIndex].Get();
+    dbr.Transition.Subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES;
+    dbr.Transition.StateBefore = D3D12_RESOURCE_STATE_PRESENT;
+    dbr.Transition.StateAfter = D3D12_RESOURCE_STATE_RENDER_TARGET;
+    m_commandList->ResourceBarrier(1, &dbr);
+
+    D3D12_CPU_DESCRIPTOR_HANDLE rtvHandle;
+    rtvHandle.ptr = m_rtvHeap->GetCPUDescriptorHandleForHeapStart().ptr + m_frameIndex * m_rtvDescriptorSize;
+    m_commandList->OMSetRenderTargets(1, &rtvHandle, FALSE, nullptr);
+
+    // record commands
+    const float clearColor[] = { 0.0f, 0.2f, 0.4f, 1.0f };
+    m_commandList->ClearRenderTargetView(rtvHandle, clearColor, 0, nullptr);
+    m_commandList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+    m_commandList->IASetVertexBuffers(0, 1, &m_vertexBufferView);
+    m_commandList->DrawInstanced(3, 1, 0, 0);
+    
+    // Indicate that the back buffer will now be used to present.
+    dbr.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
+    dbr.Flags = D3D12_RESOURCE_BARRIER_FLAG_NONE;
+    dbr.Transition.pResource = m_renderTargets[m_frameIndex].Get();
+    dbr.Transition.Subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES;
+    dbr.Transition.StateBefore = D3D12_RESOURCE_STATE_RENDER_TARGET;
+    dbr.Transition.StateAfter = D3D12_RESOURCE_STATE_PRESENT;
+    m_commandList->ResourceBarrier(1, &dbr);
+
+    ThrowIfFailed(m_commandList->Close());
 }

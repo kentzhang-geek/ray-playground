@@ -54,6 +54,7 @@ public:
 	int m_width;
 	int m_height;
 	float m_aspectRatio;
+	UINT32 m_rtvDescriptorSize;
     D3D12_VIEWPORT m_viewport;
 	HWND m_hwnd;
 	
