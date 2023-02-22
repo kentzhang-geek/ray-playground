@@ -157,47 +157,90 @@ void RTPRender::LoadAsstes()
         DirectX::XMFLOAT4 color;
     } Vertex;
 
-    Vertex triVtx[] = {
-        {{0.0f, 0.25f * m_aspectRatio, 0.0f}, {1.0f, 0.0f, 0.0f, 1.0f}},
-        {{0.25f, -0.25f * m_aspectRatio, 0.0f}, {0.0f, 1.0f, 0.0f, 1.0f}},
-        {{-0.25f, -0.25f * m_aspectRatio, 0.0f}, {0.0f, 0.0f, 1.0f, 1.0f}}
-    };
-    D3D12_HEAP_PROPERTIES hpp = {};
-    hpp.Type = D3D12_HEAP_TYPE_UPLOAD;
-    hpp.CPUPageProperty = D3D12_CPU_PAGE_PROPERTY_UNKNOWN;
-    hpp.MemoryPoolPreference = D3D12_MEMORY_POOL_UNKNOWN;
-    hpp.CreationNodeMask = 1;
-    hpp.VisibleNodeMask = 1;
-    D3D12_RESOURCE_DESC rDesc = {};
-    rDesc.Alignment = 0;
-    rDesc.Dimension = D3D12_RESOURCE_DIMENSION_BUFFER;
-    rDesc.Flags = D3D12_RESOURCE_FLAG_NONE;
-    rDesc.Format = DXGI_FORMAT_UNKNOWN;
-    rDesc.Height = 1;
-    rDesc.Layout = D3D12_TEXTURE_LAYOUT_ROW_MAJOR;
-    rDesc.Width = sizeof(triVtx);
-    rDesc.MipLevels = 1;
-    rDesc.SampleDesc.Count = 1;
-    rDesc.DepthOrArraySize = 1;
-    ThrowIfFailed(m_device->CreateCommittedResource(
-        &hpp,
-        D3D12_HEAP_FLAG_NONE,
-        &rDesc,
-        D3D12_RESOURCE_STATE_GENERIC_READ,
-        nullptr,
-        IID_PPV_ARGS(&m_vertexBuffer)));
+    {
+        Vertex triVtx[] = {
+            {{0.0f, 0.25f * m_aspectRatio, 0.0f}, {1.0f, 0.0f, 0.0f, 1.0f}},
+            {{0.25f, -0.25f * m_aspectRatio, 0.0f}, {0.0f, 1.0f, 0.0f, 1.0f}},
+            {{-0.25f, -0.25f * m_aspectRatio, 0.0f}, {0.0f, 0.0f, 1.0f, 1.0f}}
+        };
+        D3D12_HEAP_PROPERTIES hpp = {};
+        hpp.Type = D3D12_HEAP_TYPE_UPLOAD;
+        hpp.CPUPageProperty = D3D12_CPU_PAGE_PROPERTY_UNKNOWN;
+        hpp.MemoryPoolPreference = D3D12_MEMORY_POOL_UNKNOWN;
+        hpp.CreationNodeMask = 1;
+        hpp.VisibleNodeMask = 1;
+        D3D12_RESOURCE_DESC rDesc = {};
+        rDesc.Alignment = 0;
+        rDesc.Dimension = D3D12_RESOURCE_DIMENSION_BUFFER;
+        rDesc.Flags = D3D12_RESOURCE_FLAG_NONE;
+        rDesc.Format = DXGI_FORMAT_UNKNOWN;
+        rDesc.Height = 1;
+        rDesc.Layout = D3D12_TEXTURE_LAYOUT_ROW_MAJOR;
+        rDesc.Width = sizeof(triVtx);
+        rDesc.MipLevels = 1;
+        rDesc.SampleDesc.Count = 1;
+        rDesc.DepthOrArraySize = 1;
+        ThrowIfFailed(m_device->CreateCommittedResource(
+            &hpp,
+            D3D12_HEAP_FLAG_NONE,
+            &rDesc,
+            D3D12_RESOURCE_STATE_GENERIC_READ,
+            nullptr,
+            IID_PPV_ARGS(&m_vertexBuffer)));
 
-    // Copy the triangle data to the vertex buffer.
-    UINT8* pVertexDataBegin;
-    CD3DX12_RANGE readRange(0, 0); // We do not intend to read from this resource on the CPU.
-    ThrowIfFailed(m_vertexBuffer->Map(0, &readRange, reinterpret_cast<void**>(&pVertexDataBegin)));
-    memcpy(pVertexDataBegin, triVtx, sizeof(triVtx));
-    m_vertexBuffer->Unmap(0, nullptr);
+        // Copy the triangle data to the vertex buffer.
+        UINT8* pVertexDataBegin;
+        CD3DX12_RANGE readRange(0, 0); // We do not intend to read from this resource on the CPU.
+        ThrowIfFailed(m_vertexBuffer->Map(0, &readRange, reinterpret_cast<void**>(&pVertexDataBegin)));
+        memcpy(pVertexDataBegin, triVtx, sizeof(triVtx));
+        m_vertexBuffer->Unmap(0, nullptr);
 
-    // Initialize the vertex buffer view.
-    m_vertexBufferView.BufferLocation = m_vertexBuffer->GetGPUVirtualAddress();
-    m_vertexBufferView.StrideInBytes = sizeof(Vertex);
-    m_vertexBufferView.SizeInBytes = sizeof(triVtx);
+        // Initialize the vertex buffer view.
+        m_vertexBufferView.BufferLocation = m_vertexBuffer->GetGPUVirtualAddress();
+        m_vertexBufferView.StrideInBytes = sizeof(Vertex);
+        m_vertexBufferView.SizeInBytes = sizeof(triVtx);
+    }
+
+    // index buffer
+    {
+        UINT32 idx[3] = {0, 1, 2};
+        D3D12_HEAP_PROPERTIES hpp = {};
+        hpp.Type = D3D12_HEAP_TYPE_UPLOAD;
+        hpp.CPUPageProperty = D3D12_CPU_PAGE_PROPERTY_UNKNOWN;
+        hpp.MemoryPoolPreference = D3D12_MEMORY_POOL_UNKNOWN;
+        hpp.CreationNodeMask = 1;
+        hpp.VisibleNodeMask = 1;
+        D3D12_RESOURCE_DESC rDesc = {};
+        rDesc.Alignment = 0;
+        rDesc.Dimension = D3D12_RESOURCE_DIMENSION_BUFFER;
+        rDesc.Flags = D3D12_RESOURCE_FLAG_NONE;
+        rDesc.Format = DXGI_FORMAT_UNKNOWN;
+        rDesc.Height = 1;
+        rDesc.Layout = D3D12_TEXTURE_LAYOUT_ROW_MAJOR;
+        rDesc.Width = sizeof(idx);
+        rDesc.MipLevels = 1;
+        rDesc.SampleDesc.Count = 1;
+        rDesc.DepthOrArraySize = 1;
+        ThrowIfFailed(m_device->CreateCommittedResource(
+            &hpp,
+            D3D12_HEAP_FLAG_NONE,
+            &rDesc,
+            D3D12_RESOURCE_STATE_GENERIC_READ,
+            nullptr,
+            IID_PPV_ARGS(&m_indexBuffer)));
+        
+        // Map the index buffer.
+        UINT8* pIndexBufPtr;
+        CD3DX12_RANGE readRange(0, 0); // We do not intend to read from this resource on the CPU.
+        ThrowIfFailed(m_indexBuffer->Map(0, &readRange, reinterpret_cast<void**>(&pIndexBufPtr)));
+        memcpy(pIndexBufPtr, idx, sizeof(idx));
+        m_indexBuffer->Unmap(0, nullptr);
+
+        // Initialize the vertex buffer view.
+        m_indexBufferView.BufferLocation = m_indexBuffer->GetGPUVirtualAddress();
+        m_indexBufferView.Format = DXGI_FORMAT_R32_UINT;
+        m_indexBufferView.SizeInBytes = sizeof(idx);
+    }
 
     // Create synchronization objects and wait until assets have been uploaded to the GPU.
     {
@@ -290,12 +333,13 @@ void RTPRender::PopulateCommandList()
     m_commandList->OMSetRenderTargets(1, &rtvHandle, FALSE, nullptr);
 
     // record commands
-    const float clearColor[] = { 0.0f, 0.2f, 0.4f, 1.0f };
+    const float clearColor[] = {0.0f, 0.2f, 0.4f, 1.0f};
     m_commandList->ClearRenderTargetView(rtvHandle, clearColor, 0, nullptr);
     m_commandList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
     m_commandList->IASetVertexBuffers(0, 1, &m_vertexBufferView);
-    m_commandList->DrawInstanced(3, 1, 0, 0);
-    
+    m_commandList->IASetIndexBuffer(&m_indexBufferView);
+    m_commandList->DrawIndexedInstanced(3, 1, 0, 0, 0);
+
     // Indicate that the back buffer will now be used to present.
     dbr.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
     dbr.Flags = D3D12_RESOURCE_BARRIER_FLAG_NONE;
