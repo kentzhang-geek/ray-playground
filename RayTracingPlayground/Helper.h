@@ -1,3 +1,4 @@
+#pragma once
 #include <stdexcept>
 #include <string>
 #include "Log.h"
@@ -13,7 +14,17 @@ inline void ThrowIfFailed(HRESULT hr)
     }
 }
 
-static inline std::wstring GetAssetFullPath(LPCWSTR assetName)
+inline void CheckError(ComPtr<ID3DBlob> err)
+{
+    if (err)
+    {
+        RTP_LOG("Get Error : %s", static_cast<char *>(err->GetBufferPointer()));
+    }
+}
+
+inline std::wstring GetAssetFullPath(LPCWSTR assetName)
 {
     return std::wstring(L"./") + assetName;
 }
+
+#define SizeOfInUint32(obj) ((sizeof(obj) - 1) / sizeof(UINT32) + 1)

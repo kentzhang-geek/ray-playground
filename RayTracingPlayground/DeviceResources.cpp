@@ -159,6 +159,7 @@ ID3D12Device8* GetDevice()
     {
         return DeviceResources::Get()->m_device.Get();
     }
+    return nullptr;
 }
 
 void DeviceResources::WaitForPreviousFrame()
