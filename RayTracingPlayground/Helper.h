@@ -13,7 +13,7 @@ inline void ThrowIfFailed(HRESULT hr)
     }
 }
 
-std::wstring GetAssetFullPath(LPCWSTR assetName)
+static inline std::wstring GetAssetFullPath(LPCWSTR assetName)
 {
     return std::wstring(L"./") + assetName;
 }

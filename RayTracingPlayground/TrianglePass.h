@@ -5,7 +5,8 @@ class TrianglePass : public RenderPass
 {
 public:
     void Prepare() override;
-	
+    void PopulateCommandList() override;
+
     Microsoft::WRL::ComPtr<ID3D12RootSignature> m_rootSignature;
     Microsoft::WRL::ComPtr<ID3D12PipelineState> m_pipelineState;
     Microsoft::WRL::ComPtr<ID3D12Resource> m_vertexBuffer;

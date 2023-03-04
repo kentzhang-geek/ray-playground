@@ -37,6 +37,6 @@ private:
 	static DeviceResources * instance;
 };
 
-static ID3D12Device8 * GetDevice();
+ID3D12Device8 * GetDevice();
 #define DEVICE GetDevice()
 #define RESOURCES DeviceResources::Get()

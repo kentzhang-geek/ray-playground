@@ -40,11 +40,13 @@ DeviceResources* DeviceResources::Get()
 
 bool DeviceResources::Init(int m_width, int m_height, HWND m_hwnd)
 {
-    if (nullptr != instance)
+    if (nullptr == instance)
     {
         instance = new DeviceResources(m_width, m_height, m_hwnd);
+        instance->Init();
         return true;
     }
+    return false;
 }
 
 DeviceResources::DeviceResources()

@@ -148,3 +148,52 @@ void TrianglePass::Prepare()
         m_indexBufferView.SizeInBytes = sizeof(idx);
     }
 }
+
+void TrianglePass::PopulateCommandList()
+{
+    ThrowIfFailed(RESOURCES->m_commandAllocator->Reset());
+    ThrowIfFailed(RESOURCES->m_commandList->Reset(RESOURCES->m_commandAllocator.Get(), nullptr));
+    RESOURCES->m_commandList->SetPipelineState(m_pipelineState.Get());
+    // necessary states
+    RESOURCES->m_commandList->SetGraphicsRootSignature(m_rootSignature.Get());
+    RESOURCES->m_commandList->RSSetViewports(1, &RESOURCES->m_viewport);
+    D3D12_RECT sciRect = {};
+    sciRect.top = 0;
+    sciRect.left = 0;
+    sciRect.right = RESOURCES->m_width;
+    sciRect.bottom = RESOURCES->m_height;
+    RESOURCES->m_commandList->RSSetScissorRects(1, &sciRect);
+
+    // Indicate that the back buffer will be used as a render target.
+    D3D12_RESOURCE_BARRIER dbr;
+    dbr.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
+    dbr.Flags = D3D12_RESOURCE_BARRIER_FLAG_NONE;
+    dbr.Transition.pResource = RESOURCES->m_renderTargets[RESOURCES->m_frameIndex].Get();
+    dbr.Transition.Subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES;
+    dbr.Transition.StateBefore = D3D12_RESOURCE_STATE_PRESENT;
+    dbr.Transition.StateAfter = D3D12_RESOURCE_STATE_RENDER_TARGET;
+    RESOURCES->m_commandList->ResourceBarrier(1, &dbr);
+
+    D3D12_CPU_DESCRIPTOR_HANDLE rtvHandle;
+    rtvHandle.ptr = RESOURCES->m_rtvHeap->GetCPUDescriptorHandleForHeapStart().ptr + RESOURCES->m_frameIndex * RESOURCES->m_rtvDescriptorSize;
+    RESOURCES->m_commandList->OMSetRenderTargets(1, &rtvHandle, FALSE, nullptr);
+
+    // record commands
+    const float clearColor[] = {0.0f, 0.2f, 0.4f, 1.0f};
+    RESOURCES->m_commandList->ClearRenderTargetView(rtvHandle, clearColor, 0, nullptr);
+    RESOURCES->m_commandList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+    RESOURCES->m_commandList->IASetVertexBuffers(0, 1, &m_vertexBufferView);
+    RESOURCES->m_commandList->IASetIndexBuffer(&m_indexBufferView);
+    RESOURCES->m_commandList->DrawIndexedInstanced(3, 1, 0, 0, 0);
+
+    // Indicate that the back buffer will now be used to present.
+    dbr.Type = D3D12_RESOURCE_BARRIER_TYPE_TRANSITION;
+    dbr.Flags = D3D12_RESOURCE_BARRIER_FLAG_NONE;
+    dbr.Transition.pResource = RESOURCES->m_renderTargets[RESOURCES->m_frameIndex].Get();
+    dbr.Transition.Subresource = D3D12_RESOURCE_BARRIER_ALL_SUBRESOURCES;
+    dbr.Transition.StateBefore = D3D12_RESOURCE_STATE_RENDER_TARGET;
+    dbr.Transition.StateAfter = D3D12_RESOURCE_STATE_PRESENT;
+    RESOURCES->m_commandList->ResourceBarrier(1, &dbr);
+
+    ThrowIfFailed(RESOURCES->m_commandList->Close());
+}
