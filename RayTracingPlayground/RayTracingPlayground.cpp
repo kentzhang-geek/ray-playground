@@ -6,6 +6,7 @@
 #include "RayTracingPlayground.h"
 #include <memory>
 
+#include "DeviceResources.h"
 #include "RTPRender.h"
 
 #define MAX_LOADSTRING 100
@@ -126,7 +127,8 @@ BOOL InitInstance(HINSTANCE hInstance, int nCmdShow)
                              nullptr);
 
     // init render
-    rtp_render = std::shared_ptr<RTPRender>(new RTPRender(nDefaultWidth, nDefaultHeight, hWnd));
+    DeviceResources::Init(nDefaultWidth, nDefaultHeight, hWnd);
+    rtp_render = std::shared_ptr<RTPRender>(new RTPRender());
     rtp_render->Init();
     
     if (!hWnd)
