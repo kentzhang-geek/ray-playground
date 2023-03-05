@@ -14,23 +14,7 @@ void TrianglePass::Prepare()
     rsDesc.NumStaticSamplers = 0;
     rsDesc.pStaticSamplers = 0;
     rsDesc.Flags = D3D12_ROOT_SIGNATURE_FLAG_ALLOW_INPUT_ASSEMBLER_INPUT_LAYOUT;
-    ComPtr<ID3DBlob> signature;
-    ComPtr<ID3DBlob> error;
-    ThrowIfFailed(D3D12SerializeRootSignature(&rsDesc, D3D_ROOT_SIGNATURE_VERSION_1, &signature, &error));
-    ThrowIfFailed(GetDevice()->CreateRootSignature(0, signature->GetBufferPointer(), signature->GetBufferSize(),
-                                                IID_PPV_ARGS(&m_rootSignature)));
-
-    // shaders
-    ComPtr<ID3DBlob> vertexShader;
-    ComPtr<ID3DBlob> pixelShader;
-    UINT compileFlags = D3DCOMPILE_DEBUG | D3DCOMPILE_SKIP_OPTIMIZATION;
-    TCHAR buf[1024];
-    GetCurrentDirectory(1024, buf);
-    RTP_LOG("%s\n", buf);
-    ThrowIfFailed(D3DCompileFromFile(GetAssetFullPath(L"tri_shader.hlsl").c_str(), nullptr, nullptr, "VSMain", "vs_5_0",
-                                     compileFlags, 0, &vertexShader, nullptr));
-    ThrowIfFailed(D3DCompileFromFile(GetAssetFullPath(L"tri_shader.hlsl").c_str(), nullptr, nullptr, "PSMain", "ps_5_0",
-                                     compileFlags, 0, &pixelShader, nullptr));
+    PackRootSignature(rsDesc, &m_rootSignature);
 
     // Define the vertex input layout.
     D3D12_INPUT_ELEMENT_DESC inputElementDescs[] =
@@ -43,8 +27,10 @@ void TrianglePass::Prepare()
     D3D12_GRAPHICS_PIPELINE_STATE_DESC psoDesc = {};
     psoDesc.InputLayout = {inputElementDescs, _countof(inputElementDescs)};
     psoDesc.pRootSignature = m_rootSignature.Get();
-    psoDesc.VS = CD3DX12_SHADER_BYTECODE(vertexShader.Get());
-    psoDesc.PS = CD3DX12_SHADER_BYTECODE(pixelShader.Get());
+    auto vsblob = CompileShader(L"tri_shader.hlsl", "VSMain", VS);
+    auto psblob = CompileShader(L"tri_shader.hlsl", "PSMain", PS);
+    ShaderBlob2Bytecode(vsblob, &psoDesc.VS);
+    ShaderBlob2Bytecode(psblob, &psoDesc.PS);
     psoDesc.RasterizerState = CD3DX12_RASTERIZER_DESC(D3D12_DEFAULT);
     psoDesc.BlendState = CD3DX12_BLEND_DESC(D3D12_DEFAULT);
     psoDesc.DepthStencilState.DepthEnable = false; // disable depth testing for now
