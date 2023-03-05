@@ -6,6 +6,8 @@ Will only support DirectX 12. No other APIs will be considered.
 
 Start from DX Samples from Microsoft: https://github.com/microsoft/DirectX-Graphics-Samples
 
+Referred to some example from NVIDIA and other example in this repo: [https://github.com/ScrappyCocco/DirectX-DXR-Tutorials](https://github.com/ScrappyCocco/DirectX-DXR-Tutorials)
+
 Features will have:
  - FBX loading
  - Simple camera control
