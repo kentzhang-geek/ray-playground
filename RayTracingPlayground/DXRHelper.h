@@ -8,10 +8,11 @@
 #include <sstream>
 #include <string>
 #include <d3d12.h>
-#include "DXSampleHelper.h"
 #include <dxcapi.h>
 
 #include <vector>
+
+using namespace DirectX;
 
 namespace nv_helpers_dx12
 {
@@ -248,7 +249,7 @@ void GenerateMengerSponge(int32_t level, float probability, std::vector<Vertex>&
     {
 
       float size = m_size / 3.f;
-      XMVECTOR topLeftFront = m_topLeftFront;
+      DirectX::XMVECTOR topLeftFront = m_topLeftFront;
       for (int x = 0; x < 3; x++)
       {
         topLeftFront.m128_f32[0] = m_topLeftFront.m128_f32[0] + static_cast<float>(x) * size;
